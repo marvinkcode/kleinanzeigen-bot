@@ -13,6 +13,17 @@ body:
 
         Please try to investigate the issue yourself, and if possible submit a pull request with a fix.
 
+  - type: checkboxes
+    id: reproduce-latest
+    attributes:
+      label: 🔄 Tested on Latest Release
+      description: |
+        Only open issues for problems reproducible with the latest release:
+        https://github.com/Second-Hand-Friends/kleinanzeigen-bot/releases/tag/latest
+      options:
+        - label: I confirm that I can reproduce this issue on the latest version
+          required: true
+
   - type: textarea
     id: expected-behaviour
     attributes:

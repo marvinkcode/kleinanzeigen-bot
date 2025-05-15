@@ -1,13 +1,11 @@
-"""
-SPDX-FileCopyrightText: © Sebastian Thomschke and contributors
-SPDX-License-Identifier: AGPL-3.0-or-later
-SPDX-ArtifactOfProjectHomePage: https://github.com/Second-Hand-Friends/kleinanzeigen-bot/
-"""
+# SPDX-FileCopyrightText: © Sebastian Thomschke and contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-ArtifactOfProjectHomePage: https://github.com/Second-Hand-Friends/kleinanzeigen-bot/
 import inspect
 from typing import Any
 
 
-def get_caller(depth: int = 1) -> inspect.FrameInfo | None:
+def get_caller(depth:int = 1) -> inspect.FrameInfo | None:
     stack = inspect.stack()
     try:
         for frame in stack[depth + 1:]:

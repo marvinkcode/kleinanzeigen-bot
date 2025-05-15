@@ -229,6 +229,8 @@ Valid file extensions are `.json`, `.yaml` and `.yml`
 The following parameters can be configured:
 
 ```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Second-Hand-Friends/kleinanzeigen-bot/refs/heads/main/schemas/config.schema.json
+
 # glob (wildcard) patterns to select ad configuration files
 # if relative paths are specified, then they are relative to this configuration file
 ad_files:
@@ -265,6 +267,14 @@ publishing:
   delete_old_ads: "AFTER_PUBLISH" # one of: AFTER_PUBLISH, BEFORE_PUBLISH, NEVER
   delete_old_ads_by_title: true # only works if delete_old_ads is set to BEFORE_PUBLISH
 
+# captcha-Handling (optional)
+# To ensure that the bot does not require manual confirmation after a captcha, but instead automatically pauses for a defined period and then restarts, you can enable the captcha section:
+
+captcha:
+  auto_restart: true  # If true, the bot aborts when a Captcha appears and retries publishing later
+                      # If false (default), the Captcha must be solved manually to continue
+  restart_delay: 1h 30m  # Time to wait before retrying after a Captcha was encountered (default: 6h)
+
 # browser configuration
 browser:
   # https://peter.sh/experiments/chromium-command-line-switches/
@@ -295,6 +305,7 @@ Parameter values specified in the `ad_defaults` section of the `config.yaml` fil
 The following parameters can be configured:
 
 ```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Second-Hand-Friends/kleinanzeigen-bot/refs/heads/main/schemas/ad.schema.json
 active: # true or false (default: true)
 type: # one of: OFFER, WANTED (default: OFFER)
 title:
@@ -412,10 +423,12 @@ By default a new browser process will be launched. To reuse a manually launched 
 
 - Format source code: `pdm run format`
 - Run tests:
-  - unit tests: `pdm run utest`
-  - integration tests: `pdm run itest`
-  - all tests: `pdm run test`
+  - unit tests: `pdm run utest` - with coverage: `pdm run utest:cov`
+  - integration tests: `pdm run itest` - with coverage: `pdm run itest:cov`
+  - all tests: `pdm run test` - with coverage: `pdm run test:cov`
 - Run syntax checks: `pdm run lint`
+- Linting issues found by ruff can be auto-fixed using `pdm run lint:fix`
+- Derive JSON schema files from Pydantic data model: `pdm run generate-schemas`
 - Create platform-specific executable: `pdm run compile`
 - Application bootstrap works like this:
   ```python

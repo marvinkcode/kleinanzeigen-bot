@@ -1,15 +1,14 @@
-"""
-SPDX-FileCopyrightText: © Sebastian Thomschke and contributors
-SPDX-License-Identifier: AGPL-3.0-or-later
-SPDX-ArtifactOfProjectHomePage: https://github.com/Second-Hand-Friends/kleinanzeigen-bot/
-"""
-import copy, logging, re, sys
+# SPDX-FileCopyrightText: © Sebastian Thomschke and contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-ArtifactOfProjectHomePage: https://github.com/Second-Hand-Friends/kleinanzeigen-bot/
+import copy, logging, os, re, sys  # isort: skip
 from gettext import gettext as _
-from logging import Logger, DEBUG, INFO, WARNING, ERROR, CRITICAL
+from logging import CRITICAL, DEBUG, ERROR, INFO, WARNING, Logger
 from logging.handlers import RotatingFileHandler
 from typing import Any, Final  # @UnusedImport
 
 import colorama
+
 from . import i18n, reflect
 
 __all__ = [
@@ -17,6 +16,9 @@ __all__ = [
     "LogFileHandle",
     "DEBUG",
     "INFO",
+    "WARNING",
+    "ERROR",
+    "CRITICAL",
     "configure_console_logging",
     "configure_file_logging",
     "flush_all_handlers",
@@ -27,7 +29,20 @@ __all__ = [
 LOG_ROOT:Final[logging.Logger] = logging.getLogger()
 
 
+class _MaxLevelFilter(logging.Filter):
+
+    def __init__(self, level:int) -> None:
+        super().__init__()
+        self.level = level
+
+    def filter(self, record:logging.LogRecord) -> bool:
+        return record.levelno <= self.level
+
+
 def configure_console_logging() -> None:
+    # if a StreamHandler already exists, do not append it again
+    if any(isinstance(h, logging.StreamHandler) for h in LOG_ROOT.handlers):
+        return
 
     class CustomFormatter(logging.Formatter):
         LEVEL_COLORS = {
@@ -52,8 +67,42 @@ def configure_console_logging() -> None:
             CRITICAL: colorama.Fore.MAGENTA,
         }
 
+        def _relativize_paths_under_cwd(self, record:logging.LogRecord) -> None:
+            """
+            Mutate record.args in-place, converting any absolute-path strings
+            under the current working directory into relative paths.
+            """
+
+            if not record.args:
+                return
+
+            cwd = os.getcwd()
+
+            def _rel_if_subpath(val:Any) -> Any:
+                if isinstance(val, str) and os.path.isabs(val):
+                    # don't relativize log-file paths
+                    if val.endswith(".log"):
+                        return val
+
+                    try:
+                        if os.path.commonpath([cwd, val]) == cwd:
+                            return os.path.relpath(val, cwd)
+                    except ValueError:
+                        return val
+                return val
+
+            if isinstance(record.args, tuple):
+                record.args = tuple(_rel_if_subpath(a) for a in record.args)
+            elif isinstance(record.args, dict):
+                record.args = {k: _rel_if_subpath(v) for k, v in record.args.items()}
+
         def format(self, record:logging.LogRecord) -> str:
-            record = copy.deepcopy(record)
+            # Deep copy fails if record.args contains objects with
+            # __init__(...) parameters (e.g., CaptchaEncountered).
+            # A shallow copy is sufficient to preserve the original.
+            record = copy.copy(record)
+
+            self._relativize_paths_under_cwd(record)
 
             level_color = self.LEVEL_COLORS.get(record.levelno, "")
             msg_color = self.MESSAGE_COLORS.get(record.levelno, "")
@@ -79,9 +128,7 @@ def configure_console_logging() -> None:
 
     stdout_log = logging.StreamHandler(sys.stderr)
     stdout_log.setLevel(DEBUG)
-    stdout_log.addFilter(type("", (logging.Filter,), {
-        "filter": lambda rec: rec.levelno <= INFO
-    }))
+    stdout_log.addFilter(_MaxLevelFilter(INFO))
     stdout_log.setFormatter(formatter)
     LOG_ROOT.addHandler(stdout_log)
 
@@ -94,7 +141,7 @@ def configure_console_logging() -> None:
 class LogFileHandle:
     """Encapsulates a log file handler with close and status methods."""
 
-    def __init__(self, file_path: str, handler: RotatingFileHandler, logger: logging.Logger):
+    def __init__(self, file_path:str, handler:RotatingFileHandler, logger:logging.Logger) -> None:
         self.file_path = file_path
         self._handler:RotatingFileHandler | None = handler
         self._logger = logger
@@ -136,14 +183,14 @@ def flush_all_handlers() -> None:
         handler.flush()
 
 
-def get_logger(name: str | None = None) -> logging.Logger:
+def get_logger(name:str | None = None) -> logging.Logger:
     """
     Returns a localized logger
     """
 
     class TranslatingLogger(logging.Logger):
 
-        def _log(self, level: int, msg: object, *args: Any, **kwargs: Any) -> None:
+        def _log(self, level:int, msg:object, *args:Any, **kwargs:Any) -> None:
             if level != DEBUG:  # debug messages should not be translated
                 msg = i18n.translate(msg, reflect.get_caller(2))
             super()._log(level, msg, *args, **kwargs)
